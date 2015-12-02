@@ -1,7 +1,14 @@
 #include <Wire.h>
+#include <IRLib.h>
 #include <Adafruit_PWMServoDriver.h>
 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+
+#define SELECT_BUTTON 3344
+#define LEFT_ARROW    720 
+#define RIGHT_ARROW   3280
+#define UP_ARROW      752 
+#define DOWN_ARROW    2800
 
 #define SERVOMIN  275
 #define SERVOMAX  525
@@ -10,7 +17,13 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define STRIDEMAX 100
 
 int servoNum = 0;
-int servos[] = { 0, 1, 2, 3, 12, 13, 8, 9, 4, 5, 10, 11};
+int servos[] = { 
+	0, 1,
+	14, 15,
+	8, 9,
+	2, 3,
+	4, 5,
+	6, 7};
 int servoCount = 12;
 
 int angle;                                                 // determines the direction/angle (0°-360°) that the robot will walk in 
@@ -19,21 +32,75 @@ int speed;                                                 // walking speed: -15
 int stride;                                                // size of step: exceeding 400 may cause the legs to hit each other
 int step = 0;
 
+IRrecv My_Receiver(2);//Receive on pin 2
+IRdecode My_Decoder;
+
 void setup() 
-{
+{	
 	Serial.begin(9600);	
+
+	My_Receiver.No_Output();//Turn off any unused IR LED output circuit
+	My_Receiver.enableIRIn(); // Start the receiver
+
 	pwm.begin();
 	pwm.setPWMFreq(60);
+
+	speed = 0;
+	angle = 0;
+	rotate = 0;
+
 	Serial.println("Initialized...");
+	Serial.println("Ready to decode IR!");
 }
 
 void loop() 
 {
-	speed = 10;
-	angle = 0;
-	rotate = 0;
-
+	readIR();
 	walk();
+	delay(100);
+}
+
+void readIR() 
+{
+	if (My_Receiver.GetResults(&My_Decoder)) {
+		My_Decoder.decode();
+		Serial.println(My_Decoder.value);
+		switch (My_Decoder.value) {
+			Serial.println(My_Decoder.value);
+			case SELECT_BUTTON:
+				if (speed == 0)
+				{
+					speed = 10;
+				}
+				else 
+				{
+					speed = 0;
+				}
+				Serial.println("Select pressed");
+				break;
+			case LEFT_ARROW:    
+				speed = 10;
+				angle = 270;
+				rotate = 0;
+				break;
+			case RIGHT_ARROW:   
+				speed = 10;
+				angle = 90;
+				rotate = 0;
+				break;
+			case UP_ARROW:
+				speed = 10;
+				angle = 0;
+				rotate = 0;
+				break;
+			case DOWN_ARROW:
+				speed = 10;
+				angle = 180;
+				rotate = 0;
+				break;
+		}
+		My_Receiver.resume();
+	}
 }
 
 void centerServos() 
@@ -114,8 +181,6 @@ void walkSingleLeg(int kneeIndex)
 
 	pwm.setPWM(servos[kneeIndex], 0, KNEEMID + int(Knee));
 	pwm.setPWM(servos[kneeIndex + 1], 0, SERVOMID + int(Hip));
-	Serial.println(Knee);
-	Serial.println(Hip);
 
 	step += speed;
 	if (step>359) 
@@ -157,8 +222,6 @@ void walkSingleOddLeg(int kneeIndex)
 
 	pwm.setPWM(servos[kneeIndex], 0, KNEEMID + int(Knee));
 	pwm.setPWM(servos[kneeIndex + 1], 0, SERVOMID + int(Hip));
-	Serial.println(Knee);
-	Serial.println(Hip);
 
 	step += speed;
 	if (step>359)
@@ -166,75 +229,6 @@ void walkSingleOddLeg(int kneeIndex)
 	if (step<0)
 		step += 360;
 }
-
-//void Walk()
-//{
-//	if (speed == 0)                                             // return all legs to default position when stopped
-//	{
-//		stride -= 25;                                            // as stride aproaches 0, all servos return to center position
-//		if (stride<0) stride = 0;                                 // do not allow negative values, this would reverse movements
-//	}
-//	else                                                     // this only affects the robot if it was stopped
-//	{
-//		stride += 25;                                            // slowly increase stride value so that servos start up smoothly
-//		if (stride>450) stride = 450;                             // maximum value reached, prevents legs from colliding.
-//	}
-//
-//	float A;                                                 // temporary value for angle calculations
-//	double Xa, Knee, Hip;                                      // results of trigometric functions
-//	static int step;                                         // position of legs in circular motion from 0° to 360°                               
-//
-//	for (int i = 0; i<6; i += 2)                                    // calculate positions for odd numbered legs 1,3,5
-//	{
-//		A = float(60 * i + angle);                                   // angle of leg on the body + angle of travel
-//		if (A>359) A -= 360;                                      // keep value within 0°-360°
-//
-//		A = A*PI / 180;                                            // convert degrees to radians for SIN function
-//
-//		Xa = stride*rotate;                                      // Xa value for rotation
-//		if (rotate == 0)                                          // hip movement affected by walking angle
-//		{
-//			Xa = sin(A)*-stride;                                   // Xa hip position multiplier for walking at an angle
-//		}
-//
-//		A = float(step);                                         // angle of leg
-//		A = A*PI / 180;                                            // convert degrees to radians for SIN function
-//		Knee = sin(A)*stride;
-//		Hip = cos(A)*Xa;
-//
-//		sv[i * 2].writeMicroseconds(svc[i * 2] + int(Knee));         // update knee  servos 1,3,5
-//		sv[i * 2 + 1].writeMicroseconds(svc[i * 2 + 1] + int(Hip));      // update hip servos 1,3,5
-//	}
-//
-//	for (int i = 1; i<6; i += 2)                                    // calculate positions for even numbered legs 2,4,6
-//	{
-//		A = float(60 * i + angle);                                   // angle of leg on the body + angle of travel
-//		if (A>359) A -= 360;                                      // keep value within 0°-360°
-//
-//		A = A*PI / 180;                                            // convert degrees to radians for SIN function
-//		Xa = stride*rotate;                                      // Xa value for rotation
-//		if (rotate == 0)                                          // hip movement affected by walking angle
-//		{
-//			Xa = sin(A)*-stride;                                   // Xa hip position multiplier for walking at an angle
-//		}
-//
-//		A = float(step + 180);                                     // angle of leg
-//		if (A>359) A -= 360;                                      // keep value within 0°-360°
-//		A = A*PI / 180;                                            // convert degrees to radians for SIN function
-//		Knee = sin(A)*stride;
-//		Hip = cos(A)*Xa;
-//
-//		sv[i * 2].writeMicroseconds(svc[i * 2] + int(Knee));         // update knee  servos 2,4,6
-//		sv[i * 2 + 1].writeMicroseconds(svc[i * 2 + 1] + int(Hip));      // update hip servos 2,4,6
-//	}
-//
-//	step += speed;                                             // cycle through circular motion of gait
-//	if (step>359) step -= 360;                                 // keep value within 0°-360°
-//	if (step<0) step += 360;                                   // keep value within 0°-360°
-//}
-
-
-
 
 
 
