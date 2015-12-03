@@ -18,12 +18,12 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 int servoNum = 0;
 int servos[] = { 
-	0, 1,
-	14, 15,
-	8, 9,
 	2, 3,
 	4, 5,
-	6, 7};
+	14, 15,
+	8, 9,
+	6, 7,
+	0, 1};
 int servoCount = 12;
 
 int angle;                                                 // determines the direction/angle (0°-360°) that the robot will walk in 
@@ -46,7 +46,7 @@ void setup()
 	pwm.setPWMFreq(60);
 
 	speed = 0;
-	angle = 0;
+	angle = 30;
 	rotate = 0;
 
 	Serial.println("Initialized...");
@@ -57,7 +57,6 @@ void loop()
 {
 	readIR();
 	walk();
-	delay(100);
 }
 
 void readIR() 
@@ -70,32 +69,31 @@ void readIR()
 			case SELECT_BUTTON:
 				if (speed == 0)
 				{
-					speed = 10;
+					speed = 1;
 				}
 				else 
 				{
 					speed = 0;
 				}
-				Serial.println("Select pressed");
 				break;
 			case LEFT_ARROW:    
-				speed = 10;
-				angle = 270;
+				speed = 1;
+				angle = 300;
 				rotate = 0;
 				break;
 			case RIGHT_ARROW:   
-				speed = 10;
-				angle = 90;
+				speed = 1;
+				angle = 120;
 				rotate = 0;
 				break;
 			case UP_ARROW:
-				speed = 10;
-				angle = 0;
+				speed = 1;
+				angle = 30;
 				rotate = 0;
 				break;
 			case DOWN_ARROW:
-				speed = 10;
-				angle = 180;
+				speed = 1;
+				angle = 210;
 				rotate = 0;
 				break;
 		}
@@ -142,11 +140,17 @@ void walk()
 	}
 
 	walkSingleLeg(0);
-	walkSingleOddLeg(2);
+	//walkSingleOddLeg(2);
 	walkSingleLeg(4);
-	walkSingleOddLeg(6);
+	//walkSingleOddLeg(6);
 	walkSingleLeg(8);
-	walkSingleOddLeg(10);
+	//walkSingleOddLeg(10);
+
+	step += speed;
+	if (step>359)
+		step -= 360;
+	if (step<0)
+		step += 360;
 }
 
 void walkSingleLeg(int kneeIndex)
@@ -181,19 +185,12 @@ void walkSingleLeg(int kneeIndex)
 
 	pwm.setPWM(servos[kneeIndex], 0, KNEEMID + int(Knee));
 	pwm.setPWM(servos[kneeIndex + 1], 0, SERVOMID + int(Hip));
-
-	step += speed;
-	if (step>359) 
-		step -= 360;
-	if (step<0)
-		step += 360;
 }
 
 void walkSingleOddLeg(int kneeIndex)
 {
 	float A;
 	double Xa, Knee, Hip;
-	static int step;
 
 	// angle of leg on the body + angle of travel
 	A = float(60 * kneeIndex + angle);
@@ -222,12 +219,6 @@ void walkSingleOddLeg(int kneeIndex)
 
 	pwm.setPWM(servos[kneeIndex], 0, KNEEMID + int(Knee));
 	pwm.setPWM(servos[kneeIndex + 1], 0, SERVOMID + int(Hip));
-
-	step += speed;
-	if (step>359)
-		step -= 360;
-	if (step<0)
-		step += 360;
 }
 
 
