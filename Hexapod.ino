@@ -17,6 +17,7 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define STRIDEMAX 100
 
 int servoNum = 0;
+
 int servos[] = { 
 	2, 3,
 	4, 5,
@@ -46,7 +47,7 @@ void setup()
 	pwm.setPWMFreq(60);
 
 	speed = 0;
-	angle = 30;
+	angle = 330;
 	rotate = 0;
 
 	Serial.println("Initialized...");
@@ -77,24 +78,16 @@ void readIR()
 				}
 				break;
 			case LEFT_ARROW:    
-				speed = 1;
-				angle = 300;
-				rotate = 0;
+				rotate = -1;
 				break;
 			case RIGHT_ARROW:   
-				speed = 1;
-				angle = 120;
-				rotate = 0;
+				rotate = 1;
 				break;
 			case UP_ARROW:
-				speed = 1;
-				angle = 30;
-				rotate = 0;
+				speed += 1;
 				break;
 			case DOWN_ARROW:
-				speed = 1;
-				angle = 210;
-				rotate = 0;
+				speed -= 1;
 				break;
 		}
 		My_Receiver.resume();
@@ -140,26 +133,26 @@ void walk()
 	}
 
 	walkSingleLeg(0);
-	//walkSingleOddLeg(2);
+	walkSingleOddLeg(1);
+	walkSingleLeg(2);
+	walkSingleOddLeg(3);
 	walkSingleLeg(4);
-	//walkSingleOddLeg(6);
-	walkSingleLeg(8);
-	//walkSingleOddLeg(10);
+	walkSingleOddLeg(5);
 
 	step += speed;
-	if (step>359)
+	if (step > 359)
 		step -= 360;
-	if (step<0)
+	if (step < 0)
 		step += 360;
 }
 
-void walkSingleLeg(int kneeIndex)
+void walkSingleLeg(int legNum)
 {
 	float A;
 	double Xa, Knee, Hip;
 
 	// angle of leg on the body + angle of travel
-	A = float(60 * kneeIndex + angle);
+	A = float(60 * legNum + angle);
 	// keep value within 0°-360°
 	if (A > 359) 
 		A -= 360;
@@ -183,17 +176,17 @@ void walkSingleLeg(int kneeIndex)
 	Knee = sin(A)*stride;
 	Hip = cos(A)*Xa;
 
-	pwm.setPWM(servos[kneeIndex], 0, KNEEMID + int(Knee));
-	pwm.setPWM(servos[kneeIndex + 1], 0, SERVOMID + int(Hip));
+	pwm.setPWM(servos[legNum * 2], 0, KNEEMID + int(Knee));
+	pwm.setPWM(servos[legNum * 2 + 1], 0, SERVOMID + int(Hip));
 }
 
-void walkSingleOddLeg(int kneeIndex)
+void walkSingleOddLeg(int legNum)
 {
 	float A;
 	double Xa, Knee, Hip;
 
 	// angle of leg on the body + angle of travel
-	A = float(60 * kneeIndex + angle);
+	A = float(60 * legNum + angle);
 	// keep value within 0°-360°
 	if (A > 359)
 		A -= 360;
@@ -211,14 +204,14 @@ void walkSingleOddLeg(int kneeIndex)
 	}
 
 	A = float(step + 180);
-	if (A>359) A -= 360;                                      
+	if (A>359) A -= 360; 
 	// convert degrees to radians for SIN function
 	A = A*PI / 180;
 	Knee = sin(A)*stride;
 	Hip = cos(A)*Xa;
 
-	pwm.setPWM(servos[kneeIndex], 0, KNEEMID + int(Knee));
-	pwm.setPWM(servos[kneeIndex + 1], 0, SERVOMID + int(Hip));
+	pwm.setPWM(servos[legNum * 2], 0, KNEEMID + int(Knee));
+	pwm.setPWM(servos[legNum * 2 + 1], 0, SERVOMID + int(Hip));
 }
 
 
